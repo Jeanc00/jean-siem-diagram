@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1600">
+<title>jean-SIEM // SOC Home Lab V4.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #020509;
+    --bg2:      #060e18;
+    --cyan:     #00f0ff;
+    --green:    #00ff88;
+    --orange:   #ff7700;
+    --red:      #ff1f3d;
+    --purple:   #c044ff;
+    --yellow:   #ffe600;
+    --blue:     #2979ff;
+    --teal:     #00e5cc;
+    --dim:      #1a2535;
+    --text:     #b8d4e8;
+    --sub:      #3a5570;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+
+  body {
+    background: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text);
+    width: 1600px;
+    height: 980px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid */
+  body::before {
+    content:'';
+    position:fixed;inset:0;
+    background-image:
+      linear-gradient(rgba(0,240,255,0.028) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(0,240,255,0.028) 1px,transparent 1px);
+    background-size:44px 44px;
+    pointer-events:none;z-index:0;
+  }
+  /* Scanlines */
+  body::after {
+    content:'';
+    position:fixed;inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);
+    pointer-events:none;z-index:200;
+  }
+
+  .canvas{position:relative;width:1600px;height:980px;z-index:1;}
+
+  /* ── CORNERS ── */
+  .c{position:absolute;width:22px;height:22px;z-index:50;}
+  .c-tl{top:8px;left:8px;border-top:2px solid var(--cyan);border-left:2px solid var(--cyan);}
+  .c-tr{top:8px;right:8px;border-top:2px solid var(--cyan);border-right:2px solid var(--cyan);}
+  .c-bl{bottom:8px;left:8px;border-bottom:2px solid var(--cyan);border-left:2px solid var(--cyan);}
+  .c-br{bottom:8px;right:8px;border-bottom:2px solid var(--cyan);border-right:2px solid var(--cyan);}
+
+  /* ── HEADER ── */
+  .hdr{
+    position:absolute;top:16px;left:0;right:0;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 46px;z-index:20;
+  }
+  .hdr-title{display:flex;flex-direction:column;}
+  .hdr-main{
+    font-family:'Orbitron',monospace;font-size:30px;font-weight:900;
+    letter-spacing:7px;color:var(--cyan);
+    text-shadow:0 0 24px rgba(0,240,255,0.9),0 0 50px rgba(0,240,255,0.4);
+    line-height:1;
+  }
+  .hdr-sub{
+    font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:5px;
+    color:var(--sub);text-transform:uppercase;margin-top:5px;
+  }
+  .hdr-stats{display:flex;gap:20px;align-items:center;}
+  .stat{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
+  .stat-l{font-size:8px;letter-spacing:2px;color:var(--sub);text-transform:uppercase;}
+  .stat-v{font-size:12px;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:1px;}
+  .v-green{color:var(--green);text-shadow:0 0 8px rgba(0,255,136,0.7);}
+  .v-cyan{color:var(--cyan);text-shadow:0 0 8px rgba(0,240,255,0.7);}
+  .v-orange{color:var(--orange);text-shadow:0 0 8px rgba(255,119,0,0.7);}
+  .v-yellow{color:var(--yellow);text-shadow:0 0 8px rgba(255,230,0,0.7);}
+  .pdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pd 2s infinite;margin-right:5px;}
+  @keyframes pd{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.2;transform:scale(0.6);}}
+  .hdr-line{
+    position:absolute;top:74px;left:46px;right:46px;height:1px;
+    background:linear-gradient(90deg,transparent,var(--cyan) 20%,var(--cyan) 80%,transparent);
+    opacity:0.25;z-index:20;
+  }
+
+  /* ── ZONES ── */
+  .zone{
+    position:absolute;border-radius:10px;border:1px solid;z-index:3;
+    transition:border-color 0.3s;
+  }
+  .zlabel{
+    position:absolute;top:-11px;left:14px;
+    font-family:'Orbitron',monospace;font-size:8px;letter-spacing:3px;
+    padding:2px 10px;border-radius:3px;text-transform:uppercase;white-space:nowrap;
+  }
+
+  .z-wan  {top:84px;left:38px;width:320px;height:108px;border-color:rgba(255,31,61,0.22);background:rgba(255,31,61,0.025);}
+  .z-wan .zlabel{color:var(--red);background:rgba(255,31,61,0.12);border:1px solid rgba(255,31,61,0.25);}
+
+  .z-host {top:84px;left:386px;width:440px;height:108px;border-color:rgba(0,240,255,0.18);background:rgba(0,240,255,0.018);}
+  .z-host .zlabel{color:var(--cyan);background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.2);}
+
+  .z-fw   {top:84px;left:856px;width:220px;height:108px;border-color:rgba(255,119,0,0.22);background:rgba(255,119,0,0.025);}
+  .z-fw .zlabel{color:var(--orange);background:rgba(255,119,0,0.1);border:1px solid rgba(255,119,0,0.28);}
+
+  .z-ext  {top:84px;left:1106px;width:200px;height:108px;border-color:rgba(255,31,61,0.18);background:rgba(255,31,61,0.02);}
+  .z-ext .zlabel{color:var(--red);background:rgba(255,31,61,0.1);border:1px solid rgba(255,31,61,0.22);}
+
+  /* VLAN Zones bottom */
+  .z-v10  {top:258px;left:38px;width:230px;height:686px;border-color:rgba(0,240,255,0.18);background:rgba(0,240,255,0.015);}
+  .z-v10 .zlabel{color:var(--cyan);background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.2);}
+
+  .z-v20  {top:258px;left:288px;width:270px;height:686px;border-color:rgba(0,255,136,0.18);background:rgba(0,255,136,0.015);}
+  .z-v20 .zlabel{color:var(--green);background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);}
+
+  .z-v30  {top:258px;left:578px;width:270px;height:686px;border-color:rgba(192,68,255,0.18);background:rgba(192,68,255,0.015);}
+  .z-v30 .zlabel{color:var(--purple);background:rgba(192,68,255,0.08);border:1px solid rgba(192,68,255,0.2);}
+
+  .z-v40  {top:258px;left:868px;width:270px;height:686px;border-color:rgba(255,230,0,0.18);background:rgba(255,230,0,0.015);}
+  .z-v40 .zlabel{color:var(--yellow);background:rgba(255,230,0,0.08);border:1px solid rgba(255,230,0,0.2);}
+
+  .z-v50  {top:258px;left:1158px;width:270px;height:686px;border-color:rgba(0,229,204,0.18);background:rgba(0,229,204,0.015);}
+  .z-v50 .zlabel{color:var(--teal);background:rgba(0,229,204,0.08);border:1px solid rgba(0,229,204,0.2);}
+
+  .z-ext2 {top:258px;left:1448px;width:118px;height:686px;border-color:rgba(255,31,61,0.15);background:rgba(255,31,61,0.015);}
+  .z-ext2 .zlabel{color:var(--red);background:rgba(255,31,61,0.08);border:1px solid rgba(255,31,61,0.18);}
+
+  /* AD Group */
+  .adgroup{
+    position:absolute;border:1px dashed rgba(0,255,136,0.28);border-radius:8px;
+    background:rgba(0,255,136,0.018);z-index:8;
+  }
+  .adgroup-l{
+    position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+    font-size:8px;letter-spacing:2px;color:var(--green);
+    background:var(--bg);padding:1px 10px;text-transform:uppercase;white-space:nowrap;
+  }
+
+  /* ── SVG ── */
+  .svg-layer{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;}
+
+  /* ── NODES ── */
+  .node{
+    position:absolute;display:flex;flex-direction:column;align-items:center;gap:5px;
+    z-index:15;cursor:default;
+  }
+  .node:hover .nicon{transform:scale(1.1);transition:transform 0.2s;}
+
+  .nicon{
+    width:54px;height:54px;border-radius:9px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;border:1px solid;position:relative;
+    transition:transform 0.2s, box-shadow 0.3s;
+  }
+  .nicon::after{
+    content:'';position:absolute;inset:-5px;border-radius:12px;
+    border:1px solid;opacity:0.15;animation:rpulse 3.5s infinite;
+  }
+  @keyframes rpulse{0%,100%{transform:scale(1);opacity:0.15;}50%{transform:scale(1.1);opacity:0.03;}}
+
+  .nlabel{font-family:'Rajdhani',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;line-height:1.25;max-width:96px;}
+  .nip{font-size:8px;letter-spacing:0.8px;color:var(--sub);text-align:center;line-height:1.4;}
+
+  .badge{
+    display:inline-block;font-size:7px;letter-spacing:1px;padding:1px 5px;
+    border-radius:3px;border:1px solid;margin-top:1px;font-family:'Share Tech Mono',monospace;
+  }
+
+  /* Color variants */
+  .nc  .nicon{background:rgba(0,240,255,0.07);border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 14px rgba(0,240,255,0.25);}
+  .nc  .nicon::after{border-color:var(--cyan);}
+  .nc  .nlabel{color:var(--cyan);}
+  .nc  .badge{color:var(--cyan);border-color:rgba(0,240,255,0.35);background:rgba(0,240,255,0.07);}
+
+  .ng  .nicon{background:rgba(0,255,136,0.07);border-color:var(--green);color:var(--green);box-shadow:0 0 14px rgba(0,255,136,0.25);}
+  .ng  .nicon::after{border-color:var(--green);}
+  .ng  .nlabel{color:var(--green);}
+  .ng  .badge{color:var(--green);border-color:rgba(0,255,136,0.35);background:rgba(0,255,136,0.07);}
+
+  .no  .nicon{background:rgba(255,119,0,0.07);border-color:var(--orange);color:var(--orange);box-shadow:0 0 14px rgba(255,119,0,0.25);}
+  .no  .nicon::after{border-color:var(--orange);}
+  .no  .nlabel{color:var(--orange);}
+  .no  .badge{color:var(--orange);border-color:rgba(255,119,0,0.35);background:rgba(255,119,0,0.07);}
+
+  .nr  .nicon{background:rgba(255,31,61,0.07);border-color:var(--red);color:var(--red);box-shadow:0 0 14px rgba(255,31,61,0.25);}
+  .nr  .nicon::after{border-color:var(--red);}
+  .nr  .nlabel{color:var(--red);}
+  .nr  .badge{color:var(--red);border-color:rgba(255,31,61,0.35);background:rgba(255,31,61,0.07);}
+
+  .np  .nicon{background:rgba(192,68,255,0.07);border-color:var(--purple);color:var(--purple);box-shadow:0 0 14px rgba(192,68,255,0.25);}
+  .np  .nicon::after{border-color:var(--purple);}
+  .np  .nlabel{color:var(--purple);}
+  .np  .badge{color:var(--purple);border-color:rgba(192,68,255,0.35);background:rgba(192,68,255,0.07);}
+
+  .ny  .nicon{background:rgba(255,230,0,0.07);border-color:var(--yellow);color:var(--yellow);box-shadow:0 0 14px rgba(255,230,0,0.25);}
+  .ny  .nicon::after{border-color:var(--yellow);}
+  .ny  .nlabel{color:var(--yellow);}
+  .ny  .badge{color:var(--yellow);border-color:rgba(255,230,0,0.35);background:rgba(255,230,0,0.07);}
+
+  .nt  .nicon{background:rgba(0,229,204,0.07);border-color:var(--teal);color:var(--teal);box-shadow:0 0 14px rgba(0,229,204,0.25);}
+  .nt  .nicon::after{border-color:var(--teal);}
+  .nt  .nlabel{color:var(--teal);}
+  .nt  .badge{color:var(--teal);border-color:rgba(0,229,204,0.35);background:rgba(0,229,204,0.07);}
+
+  /* Big node variant */
+  .nicon-lg{width:64px;height:64px;font-size:28px;border-radius:10px;}
+  .nicon-lg::after{inset:-6px;border-radius:14px;}
+
+  /* ── LAN BUS LABEL ── */
+  .bus-label{
+    position:absolute;z-index:20;text-align:center;
+    font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;
+    color:rgba(0,240,255,0.45);background:var(--bg);
+    padding:2px 16px;border:1px solid rgba(0,240,255,0.18);border-radius:3px;
+    white-space:nowrap;
+  }
+
+  /* ── LEGEND ── */
+  .legend{
+    position:absolute;bottom:16px;right:46px;
+    display:flex;gap:18px;align-items:center;z-index:20;
+  }
+  .li{display:flex;align-items:center;gap:6px;font-size:8px;letter-spacing:1.5px;color:var(--sub);text-transform:uppercase;}
+  .ll{width:22px;height:2px;}
+  .ll-dash{background:none;border-top:2px dashed;}
+
+  /* ── WATERMARK ── */
+  .wm{
+    position:absolute;bottom:20px;left:46px;
+    font-family:'Orbitron',monospace;font-size:8px;letter-spacing:3px;
+    color:rgba(0,240,255,0.18);text-transform:uppercase;z-index:20;
+  }
+
+  /* Animated packet */
+  .pkt{animation:pktflow linear infinite;}
+  @keyframes pktflow{from{stroke-dashoffset:200;}to{stroke-dashoffset:0;}}
+
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <!-- Corners -->
+  <div class="c c-tl"></div><div class="c c-tr"></div>
+  <div class="c c-bl"></div><div class="c c-br"></div>
+
+  <!-- ── HEADER ── -->
+  <div class="hdr">
+    <div class="hdr-title">
+      <div class="hdr-main">jean-SIEM</div>
+      <div class="hdr-sub">Security Operations · Network Architecture · Home Lab V4.0</div>
+    </div>
+    <div class="hdr-stats">
+      <div class="stat"><span class="stat-l">Status</span><span class="stat-v v-green"><span class="pdot"></span>OPERATIONAL</span></div>
+      <div class="stat"><span class="stat-l">VLANs</span><span class="stat-v v-cyan">6 ACTIVE</span></div>
+      <div class="stat"><span class="stat-l">IDS</span><span class="stat-v v-orange">SURICATA</span></div>
+      <div class="stat"><span class="stat-l">SIEM</span><span class="stat-v v-yellow">SPLUNK + WAZUH</span></div>
+      <div class="stat"><span class="stat-l">Domain</span><span class="stat-v v-cyan">LAB.LOCAL</span></div>
+      <div class="stat"><span class="stat-l">Threat</span><span class="stat-v v-orange">MONITORED</span></div>
+    </div>
+  </div>
+  <div class="hdr-line"></div>
+
+  <!-- ── ZONES ── -->
+  <div class="zone z-wan"><span class="zlabel">Internet / WAN</span></div>
+  <div class="zone z-host"><span class="zlabel">Host Layer</span></div>
+  <div class="zone z-fw"><span class="zlabel">Firewall · pfSense + Suricata</span></div>
+  <div class="zone z-ext"><span class="zlabel">Red Team · Ext</span></div>
+  <div class="zone z-v10"><span class="zlabel">VLAN 10 · MGMT</span></div>
+  <div class="zone z-v20"><span class="zlabel">VLAN 20 · Users</span></div>
+  <div class="zone z-v30"><span class="zlabel">VLAN 30 · Executive</span></div>
+  <div class="zone z-v40"><span class="zlabel">VLAN 40 · Servers</span></div>
+  <div class="zone z-v50"><span class="zlabel">VLAN 50 · SOC</span></div>
+  <div class="zone z-ext2"><span class="zlabel">Red Team · Int</span></div>
+
+  <!-- AD Group -->
+  <div class="adgroup" style="left:296px;top:580px;width:544px;height:340px;">
+    <span class="adgroup-l">AD Domain · LAB.local — LAB-Users (VLAN 20) · EXEC-Users (VLAN 30)</span>
+  </div>
+
+  <!-- ── SVG CONNECTIONS ── -->
+  <svg class="svg-layer" viewBox="0 0 1600 980" preserveAspectRatio="none">
+    <defs>
+      <filter id="gc"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="go"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="gr"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="gg"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="gy"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <marker id="ac" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="rgba(0,240,255,0.8)"/></marker>
+      <marker id="ao" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="rgba(255,119,0,0.8)"/></marker>
+      <marker id="ar" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="rgba(255,31,61,0.8)"/></marker>
+      <marker id="ag" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="rgba(0,255,136,0.8)"/></marker>
+      <marker id="ay" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="rgba(255,230,0,0.8)"/></marker>
+    </defs>
+
+    <!-- ISP → TPLink -->
+    <line x1="178" y1="138" x2="270" y2="138" stroke="rgba(255,119,0,0.55)" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#go)" marker-end="url(#ao)"/>
+    <line x1="178" y1="138" x2="270" y2="138" stroke="rgba(255,119,0,0.25)" stroke-width="5" stroke-dasharray="4,32" class="pkt" style="animation-duration:2.2s"/>
+
+    <!-- TPLink → pfSense WAN -->
+    <line x1="406" y1="138" x2="620" y2="138" stroke="rgba(0,240,255,0.5)" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#gc)" marker-end="url(#ac)"/>
+    <line x1="406" y1="138" x2="620" y2="138" stroke="rgba(0,240,255,0.2)" stroke-width="5" stroke-dasharray="4,32" class="pkt" style="animation-duration:1.8s"/>
+
+    <!-- iMac → VMware -->
+    <line x1="548" y1="138" x2="626" y2="138" stroke="rgba(0,240,255,0.35)" stroke-width="1.5" stroke-dasharray="4,4" filter="url(#gc)"/>
+
+    <!-- VMware → pfSense -->
+    <line x1="716" y1="138" x2="860" y2="138" stroke="rgba(0,240,255,0.4)" stroke-width="1.5" stroke-dasharray="4,4" filter="url(#gc)" marker-end="url(#ac)"/>
+
+    <!-- External Red → TPLink attack -->
+    <path d="M 1196 138 Q 1400 60 1380 138 Q 1360 200 1076 188" stroke="rgba(255,31,61,0.5)" stroke-width="1.5" fill="none" stroke-dasharray="6,4" filter="url(#gr)" marker-end="url(#ar)"/>
+
+    <!-- pfSense down to LAN bus -->
+    <line x1="966" y1="192" x2="966" y2="248" stroke="rgba(0,240,255,0.5)" stroke-width="2" filter="url(#gc)"/>
+
+    <!-- LAN bus horizontal -->
+    <line x1="56" y1="248" x2="1544" y2="248" stroke="rgba(0,240,255,0.2)" stroke-width="1.5" stroke-dasharray="8,5"/>
+
+    <!-- Bus drops to zones -->
+    <line x1="153" y1="248" x2="153" y2="268" stroke="rgba(0,240,255,0.5)" stroke-width="1.5"/>
+    <line x1="423" y1="248" x2="423" y2="268" stroke="rgba(0,255,136,0.5)" stroke-width="1.5"/>
+    <line x1="713" y1="248" x2="713" y2="268" stroke="rgba(192,68,255,0.5)" stroke-width="1.5"/>
+    <line x1="1003" y1="248" x2="1003" y2="268" stroke="rgba(255,230,0,0.5)" stroke-width="1.5"/>
+    <line x1="1293" y1="248" x2="1293" y2="268" stroke="rgba(0,229,204,0.5)" stroke-width="1.5"/>
+
+    <!-- MGMT internal -->
+    <line x1="153" y1="390" x2="153" y2="450" stroke="rgba(0,240,255,0.3)" stroke-width="1" stroke-dasharray="3,4"/>
+
+    <!-- AD auth lines DC01 → USER01, USER02 -->
+    <path d="M 530 600 Q 430 700 360 720" stroke="rgba(192,68,255,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,5"/>
+    <path d="M 530 600 Q 460 730 440 760" stroke="rgba(192,68,255,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,5"/>
+    <!-- AD auth → EXEC03, EXEC04 -->
+    <path d="M 530 600 Q 650 680 700 690" stroke="rgba(192,68,255,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,5"/>
+    <path d="M 530 600 Q 660 720 700 760" stroke="rgba(192,68,255,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,5"/>
+
+    <!-- Log collection flows to Splunk/Wazuh (animated, thin) -->
+    <path d="M 153 500 Q 800 460 1240 500" stroke="rgba(255,230,0,0.15)" stroke-width="1" fill="none" stroke-dasharray="3,10" class="pkt" style="animation-duration:5s"/>
+    <path d="M 423 540 Q 850 500 1240 540" stroke="rgba(255,230,0,0.15)" stroke-width="1" fill="none" stroke-dasharray="3,10" class="pkt" style="animation-duration:4.5s"/>
+    <path d="M 713 500 Q 1000 470 1240 480" stroke="rgba(255,230,0,0.15)" stroke-width="1" fill="none" stroke-dasharray="3,10" class="pkt" style="animation-duration:4s"/>
+    <path d="M 1003 500 Q 1120 490 1240 510" stroke="rgba(255,230,0,0.15)" stroke-width="1" fill="none" stroke-dasharray="3,10" class="pkt" style="animation-duration:3.5s"/>
+
+    <!-- VirusTotal cloud connection from Wazuh -->
+    <path d="M 1293 750 Q 1420 780 1500 720" stroke="rgba(255,31,61,0.3)" stroke-width="1" fill="none" stroke-dasharray="4,6" class="pkt" style="animation-duration:3s"/>
+
+    <!-- Internal Red Team attack path -->
+    <path d="M 1507 600 Q 1570 500 1507 420" stroke="rgba(255,31,61,0.35)" stroke-width="1.2" fill="none" stroke-dasharray="5,5" filter="url(#gr)"/>
+
+    <!-- Suricata → Splunk label path -->
+    <path d="M 966 192 Q 1100 220 1240 400" stroke="rgba(255,119,0,0.2)" stroke-width="1" fill="none" stroke-dasharray="3,7" class="pkt" style="animation-duration:3.5s"/>
+  </svg>
+
+  <!-- ── TOP NODES ── -->
+
+  <!-- ISP -->
+  <div class="node nr" style="left:110px;top:100px;">
+    <div class="nicon">🌐</div>
+    <div class="nlabel">ISP</div>
+    <div class="nip">192.168.1.1</div>
+  </div>
+
+  <!-- TPLink -->
+  <div class="node no" style="left:258px;top:100px;">
+    <div class="nicon">📡</div>
+    <div class="nlabel">TP-LINK</div>
+    <div class="nip">192.168.0.0/24</div>
+  </div>
+
+  <!-- iMac -->
+  <div class="node nc" style="left:450px;top:98px;">
+    <div class="nicon nicon-lg">🖥</div>
+    <div class="nlabel">iMac HOST</div>
+    <div class="nip">macOS · Physical</div>
+    <div class="nip">i7-10700K · 64GB</div>
+  </div>
+
+  <!-- VMware -->
+  <div class="node nc" style="left:620px;top:100px;">
+    <div class="nicon">⚙️</div>
+    <div class="nlabel">VMware Fusion</div>
+    <div class="nip">Hypervisor</div>
+  </div>
+
+  <!-- pfSense -->
+  <div class="node no" style="left:880px;top:92px;">
+    <div class="nicon nicon-lg">🛡</div>
+    <div class="nlabel">pfSense</div>
+    <div class="nip">WAN 192.168.0.x</div>
+    <div class="nip">LAN 10.10.10.1</div>
+    <div class="badge">SURICATA IDS · EVE JSON</div>
+  </div>
+
+  <!-- External Red -->
+  <div class="node nr" style="left:1112px;top:100px;">
+    <div class="nicon">💀</div>
+    <div class="nlabel">Kali Red<br>External</div>
+    <div class="nip">192.168.0.x</div>
+    <div class="badge">EXT ATTACKER</div>
+  </div>
+
+  <!-- ── VLAN 10 · MGMT ── -->
+  <div class="node nc" style="left:68px;top:310px;">
+    <div class="nicon">🔧</div>
+    <div class="nlabel">ADMIN-WS</div>
+    <div class="nip">10.10.10.x</div>
+    <div class="nip">Windows 11</div>
+    <div class="badge">VLAN 10</div>
+  </div>
+
+  <!-- ── VLAN 20 · USERS ── -->
+  <div class="node ng" style="left:308px;top:310px;">
+    <div class="nicon">🖱</div>
+    <div class="nlabel">WIN11<br>USER01</div>
+    <div class="nip">10.10.20.101</div>
+    <div class="badge">VLAN 20 · Sysmon</div>
+  </div>
+
+  <div class="node ng" style="left:308px;top:530px;">
+    <div class="nicon">🖱</div>
+    <div class="nlabel">WIN11<br>USER02</div>
+    <div class="nip">10.10.20.x</div>
+    <div class="badge">VLAN 20 · Sysmon</div>
+  </div>
+
+  <!-- ── VLAN 30 · EXECUTIVE ── -->
+  <div class="node np" style="left:598px;top:310px;">
+    <div class="nicon">💻</div>
+    <div class="nlabel">EXEC<br>USER03</div>
+    <div class="nip">10.10.30.x</div>
+    <div class="nip">Windows 11</div>
+    <div class="badge">VLAN 30 · Sysmon</div>
+  </div>
+
+  <div class="node np" style="left:598px;top:530px;">
+    <div class="nicon">💻</div>
+    <div class="nlabel">EXEC<br>USER04</div>
+    <div class="nip">10.10.30.x</div>
+    <div class="nip">Windows 11</div>
+    <div class="badge">VLAN 30 · Sysmon</div>
+  </div>
+
+  <!-- ── VLAN 40 · SERVERS ── -->
+  <div class="node ny" style="left:888px;top:310px;">
+    <div class="nicon nicon-lg">🏛</div>
+    <div class="nlabel">SERVER-LAB<br>DC01</div>
+    <div class="nip">10.10.40.10</div>
+    <div class="nip">Win Server 2025</div>
+    <div class="badge">LAB.local / AD · VLAN 40</div>
+  </div>
+
+  <div class="node ny" style="left:888px;top:580px;">
+    <div class="nicon">🐧</div>
+    <div class="nlabel">DATA CENTRAL<br>Ubuntu</div>
+    <div class="nip">10.10.40.100</div>
+    <div class="nip">Ubuntu 24.04 LTS</div>
+    <div class="badge">LAB.local · Kerberos · VLAN 40</div>
+  </div>
+
+  <!-- ── VLAN 50 · SOC ── -->
+  <div class="node nt" style="left:1168px;top:310px;">
+    <div class="nicon nicon-lg">🐉</div>
+    <div class="nlabel">jean-blue<br>Kali Blue</div>
+    <div class="nip">10.10.50.100</div>
+    <div class="nip">Blue Team / SSH</div>
+    <div class="badge">VLAN 50</div>
+  </div>
+
+  <div class="node nt" style="left:1168px;top:510px;">
+    <div class="nicon nicon-lg">📊</div>
+    <div class="nlabel">Splunk<br>Enterprise</div>
+    <div class="nip">10.10.50.10</div>
+    <div class="nip">:8000 Web · :9997 UF</div>
+    <div class="badge">VLAN 50 · SIEM</div>
+  </div>
+
+  <div class="node nt" style="left:1168px;top:720px;">
+    <div class="nicon">🔬</div>
+    <div class="nlabel">Wazuh<br>Ubuntu SIEM</div>
+    <div class="nip">10.10.50.20</div>
+    <div class="nip">:1514 Logs · :1515 Enroll</div>
+    <div class="badge">VLAN 50 · XDR</div>
+  </div>
+
+  <!-- ── RED TEAM INT + VT ── -->
+  <div class="node nr" style="left:1456px;top:380px;">
+    <div class="nicon">⚔️</div>
+    <div class="nlabel">Kali Red<br>Internal</div>
+    <div class="nip">Bridge Mode</div>
+    <div class="badge">INT ATTACKER</div>
+  </div>
+
+  <div class="node nr" style="left:1456px;top:620px;">
+    <div class="nicon">🦠</div>
+    <div class="nlabel">VirusTotal<br>API</div>
+    <div class="nip">Threat Intel</div>
+    <div class="nip">Hash Reputation</div>
+    <div class="badge">CLOUD · EXT</div>
+  </div>
+
+  <!-- LAN Bus Label -->
+  <div class="bus-label" style="left:50%;top:236px;transform:translateX(-50%);">
+    LAN BACKBONE · 10.10.0.0/16 · VMware Internal Networks
+  </div>
+
+  <!-- ── LEGEND ── -->
+  <div class="legend">
+    <div class="li"><div class="ll" style="background:rgba(0,240,255,0.6);"></div>Internal Traffic</div>
+    <div class="li"><div class="ll" style="background:rgba(255,119,0,0.6);"></div>WAN / pfSense</div>
+    <div class="li"><div class="ll" style="background:rgba(255,31,61,0.6);"></div>Red Team / Attack</div>
+    <div class="li"><div class="ll" style="background:rgba(192,68,255,0.6);"></div>AD Auth</div>
+    <div class="li"><div class="ll ll-dash" style="border-color:rgba(255,230,0,0.6);"></div>Log Collection</div>
+    <div class="li"><div class="ll ll-dash" style="border-color:rgba(255,31,61,0.4);"></div>Threat Intel · VT API</div>
+  </div>
+
+  <!-- Watermark -->
+  <div class="wm">jean-SIEM · SOC Home Lab V4.0 · Paterson NJ · github.com/Jeanc00</div>
+
+</div>
+</body>
+</html>
